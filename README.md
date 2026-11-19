@@ -14,7 +14,7 @@ Monitoring LAN seperti PRTG untuk MikroTik hAP ac (RouterOS 7.25.1) dengan dashb
 **NetGuardMonit** adalah solusi monitoring jaringan (mirip PRTG) yang dirancang khusus untuk MikroTik RouterOS di lingkungan LAN lokal. Fokus utama proyek ini adalah **keamanan absolut**: semua akses REST RouterOS hanya diizinkan dari host lokal, dan *dashboard* publik diakses melalui **Cloudflare Tunnel**, **bukan** melalui port yang di-*port-forward* dari router.
 
 ## 🖼️ Tampilan Dashboard
-![Main Dashboard Screenshot](ddos_dashboard_mockup.png)
+<img width="922" height="858" alt="Screenshot 2026-11-19 151434" src="https://github.com/user-attachments/assets/901e61c7-2ede-4d40-91e0-3ae750b99f24" />
 
 ## ✨ Fitur Utama
 *   **Monitoring Komprehensif:** Traffic RX/TX *realtime* per antarmuka, status link UP/DOWN, kesehatan sistem (CPU, Disk, Uptime).
