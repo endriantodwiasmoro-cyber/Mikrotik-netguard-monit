@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · NetGuard Monit{% endblock %}
+
+{% block content %}
+{% if telemetry %}
+  <section class="status-line" aria-live="polite">
+    <span class="status-dot {{ 'up' if telemetry.router_up else 'down' }}" aria-hidden="true"></span>
+    <strong>{{ 'Router terhubung' if telemetry.router_up else 'Router tidak terhubung' }}</strong>
+    {% if wan_name is not none %}
+      <span class="separator">|</span>
+      <span class="wan-status {{ 'wan-up' if telemetry.wan_running else 'wan-down' }}">
+        {{ 'WAN (' + wan_name + ') aktif' if telemetry.wan_running else ('WAN (' + wan_name + ') MATI' if telemetry.wan_running is not none else 'WAN tidak diketahui') }}
+      </span>
+    {% endif %}
+  </section>
+
+  <section class="metrics" aria-label="Metrik kesehatan saat ini">
+    <article class="metric"><span>Beban CPU</span><strong>{{ telemetry.cpu_load }}</strong></article>
+    <article class="metric"><span>Penyimpanan bebas</span><strong>{{ telemetry.free_hdd_space }}</strong><small>dari {{ telemetry.total_hdd_space }}</small></article>
+    {% if wan_name %}
+    <article class="metric"><span>{{ wan_name }}</span><strong>{{ 'Aktif' if telemetry.wan_running else ('Mati' if telemetry.wan_running is not none else 'Tidak diketahui') }}</strong></article>
+    {% endif %}
+    <article class="metric"><span>RouterOS</span><strong>{{ telemetry.details.version or '—' }}</strong><small>{{ telemetry.details.board_name or '' }}</small></article>
+  </section>
+{% else %}
+  <section class="notice warning"><strong>Menunggu polling pertama.</strong> Monitor telah dimulai tetapi belum menyimpan data.</section>
+{% endif %}
+
+<!-- Antarmuka dan grafik trafik -->
+<section class="panel">
+  <div class="panel-head">
+    <h2>Trafik Antarmuka</h2>
+    <div class="toolbar">
+      <label for="interface-select">Antarmuka:</label>
+      <select id="interface-select" name="interface">
+        {% if interfaces %}
+          {% for name, sample in interfaces.items() %}
+            <option value="{{ name }}">{{ name }} ({{ sample.status }})</option>
+          {% endfor %}
+        {% else %}
+          <option>Belum ada data antarmuka</option>
+        {% endif %}
+      </select>
+      <label for="granularity-select">Granularitas:</label>
+      <select id="granularity-select" name="granularity">
+        <option value="second">Detik (real-time)</option>
+        <option value="minute" selected>Menit</option>
+        <option value="hour">Jam</option>
+        <option value="day">Hari</option>
+        <option value="month">Bulan</option>
+      </select>
+      <label for="range-select">Rentang:</label>
+      <select id="range-select" name="range">
+        <option value="1">1 jam</option>
+        <option value="6" selected>6 jam</option>
+        <option value="24">24 jam</option>
+        <option value="72">3 hari</option>
+        <option value="168">1 minggu</option>
+      </select>
+    </div>
+  </div>
+  <div class="chart-wrap" style="margin:0 20px 20px;">
+    <canvas id="trafficChart"></canvas>
+  </div>
+  <div class="traffic-metrics" style="padding:0 20px 20px; display:flex; gap:24px; flex-wrap:wrap;">
+    <div class="traffic-stat">
+      <div class="stat-label">RX (ke dalam)</div>
+      <div class="stat-value" id="stat-rx-bps">—</div>
+      <div class="stat-sub" id="stat-rx-bytes">—</div>
+    </div>
+    <div class="traffic-stat">
+      <div class="stat-label">TX (keluar)</div>
+      <div class="stat-value" id="stat-tx-bps">—</div>
+      <div class="stat-sub" id="stat-tx-bytes">—</div>
+    </div>
+    <div class="traffic-stat">
+      <div class="stat-label">Status</div>
+      <div class="stat-value" id="stat-status">—</div>
+      <div class="stat-sub" id="stat-updated">—</div>
+    </div>
+  </div>
+</section>
+
+<!-- Ping / Latency monitoring -->
+<section class="panel">
+  <div class="panel-head">
+    <h2>Ping &amp; Latency</h2>
+    <div class="toolbar" style="margin:0 20px 16px;">
+      <label for="ping-target-select">Target:</label>
+      <select id="ping-target-select" name="ping-target" style="min-width:160px;">
+        {% if ping_targets %}
+          {% for t in ping_targets %}
+            <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        {% else %}
+          <option>Belum ada target yang dikonfigurasi</option>
+        {% endif %}
+      </select>
+      <label for="ping-granularity-select">Granularitas:</label>
+      <select id="ping-granularity-select" name="granularity">
+        <option value="second">Detik (real-time)</option>
+        <option value="minute" selected>Menit</option>
+        <option value="hour">Jam</option>
+        <option value="day">Hari</option>
+        <option value="month">Bulan</option>
+      </select>
+      <label for="ping-range-select">Rentang:</label>
+      <select id="ping-range-select" name="range">
+        <option value="1">1 jam</option>
+        <option value="6" selected>6 jam</option>
+        <option value="24">24 jam</option>
+        <option value="72">3 hari</option>
+        <option value="168">1 minggu</option>
+      </select>
+      <span id="ping-target-count">{{ ping_targets|length }} target</span>
+    </div>
+  </div>
+  <div class="chart-wrap" style="margin:0 20px 12px;">
+    <canvas id="pingChart"></canvas>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Alert</h2><span>{{ alerts|length }} terbaru</span></div>
+  {% if alerts %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Status</th><th>Peringatan</th><th>Terakhir dilihat</th></tr></thead>
+    <tbody>{% for alert in alerts %}
+      <tr>
+        <td><span class="badge {{ alert.status }}">{{ alert.status }}</span></td>
+        <td>{{ alert.message }}</td>
+        <td><span data-utc="{{ alert.last_seen_at }}">{{ alert.last_seen_at }}</span></td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="empty">Tidak ada alert yang tercatat.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Aktivitas</h2><span>10 event terbaru</span></div>
+  {% if events %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Pesan</th><th>Waktu</th></tr></thead>
+    <tbody>{% for event in events %}
+      <tr>
+        <td><span class="badge {{ event.kind }}">{{ event.kind }}</span></td>
+        <td>{{ event.message }}</td>
+        <td><span data-utc="{{ event.created_at }}">{{ event.created_at }}</span></td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="empty">Belum ada aktivitas alert.</p>{% endif %}
+</section>
+{% endblock %}

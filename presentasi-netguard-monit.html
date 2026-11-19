@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetGuard Monit - Presentasi Aplikasi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #08111e;
+    color: #edf4ff;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .deck {
+    width: 100%;
+    min-height: 100vh;
+    padding: 0;
+  }
+  .slide {
+    width: 100%;
+    min-height: 100vh;
+    padding: 40px 60px;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid #283a50;
+    position: relative;
+  }
+  .slide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+  }
+  .slide-kode {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #50d3a7;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .slide-judul {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 10px;
+    max-width: 800px;
+  }
+  .slide-sub {
+    font-size: 1.05rem;
+    color: #a5b6ca;
+    max-width: 720px;
+    line-height: 1.5;
+  }
+  .slide-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #a5b6ca;
+    border-top: 1px solid #283a50;
+    padding-top: 20px;
+    margin-top: 30px;
+  }
+
+  /* Navigasi sederhana di bawah */
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav-btn {
+    background: #283a50;
+    color: #edf4ff;
+    border: 1px solid #4c607a;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { background: #4c607a; border-color: #50d3a7; color: #50d3a7; }
+  .nav-btn.active { background: #50d3a7; color: #042018; border-color: #50d3a7; font-weight: 700; }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: #101d2e;
+    border: 1px solid #283a50;
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+  }
+  .card h4 {
+    color: #50d3a7;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .card p { font-size: 0.9rem; color: #c7d2e5; line-height: 1.5; }
+  .card b { color: #edf4ff; }
+
+  ul.features { list-style: none; margin-top: 6px; }
+  ul.features li {
+    padding: 5px 0;
+    font-size: 0.9rem;
+    color: #c7d2e5;
+    border-bottom: 1px solid #1e304a;
+  }
+  ul.features li:last-child { border-bottom: none; }
+  ul.features li::before { content: "▸ "; color: #50d3a7; font-weight: bold; margin-right: 8px; }
+
+  .badge {
+    display: inline-block;
+    background: rgba(80, 211, 167, 0.15);
+    color: #50d3a7;
+    border: 1px solid rgba(80, 211, 167, 0.3);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    margin-right: 8px;
+    margin-bottom: 6px;
+  }
+
+  .tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .tech-item {
+    background: #07101a;
+    border: 1px solid #283a50;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    color: #ffc36a;
+  }
+
+  .screenshot-placeholder {
+    background: #07101a;
+    border: 1px solid #283a50;
+    border-radius: 10px;
+    height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5d6d86;
+    font-size: 0.9rem;
+    margin-top: 15px;
+  }
+
+  /* Title slide */
+  .title-wrap { display: flex; flex-direction: column; justify-content: center; height: 85vh; text-align: center; }
+  h1.title-main { font-size: 3.2rem; font-weight: 900; line-height: 1.1; margin-bottom: 10px; }
+  h1.title-main span { color: #50d3a7; }
+  .title-meta { font-size: 1.15rem; color: #a5b6ca; line-height: 1.7; max-width: 700px; margin: 0 auto; }
+  .title-meta b { color: #edf4ff; }
+
+  .page-indicator {
+    font-size: 0.8rem;
+    color: #a5b6ca;
+    margin-top: 15px;
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- ========== SLIDE 1: JUDUL ========== -->
+  <div class="slide" id="slide1">
+    <div class="title-wrap">
+      <div class="slide-kode">NETGUARD MONIT</div>
+      <h1 class="title-main">NetGuard <span>Monit</span></h1>
+      <div class="title-meta">
+        <p><b>PRTG-like LAN Monitoring untuk MikroTik RouterOS</b></p>
+        <p>Monitoring waktu nyata lalu lintas jaringan, status link, deteksi DDoS, dan latensi ping melalui antarmuka web modern.</p>
+        <p style="margin-top:24px;">Docker • FastAPI • SQLite • Chart.js • Cloudflare Tunnel • WIB (GMT+0700)</p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>NetGuard Monit • Presentasi Sistem</span>
+      <span>Slide 1 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 2: APA ITU ========== -->
+  <div class="slide" id="slide2">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Bagian 1</div>
+        <div class="slide-judul">Apa Itu NetGuard Monit?</div>
+        <div class="slide-sub">Sebuah aplikasi monitoring jaringan LAN berbasis web yang dirancang khusus untuk MikroTik RouterOS. Hadir sebagai alternatif ringan dan self-hosted terhadap solusi monitoring perusahaan seperti PRTG.</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Dasar Pengembangan</h4>
+        <p>Backend dibangun dengan <b>Python (FastAPI)</b>, basis data waktu-deret menggunakan <b>SQLite</b>, dan frontend visualisasi dengan <b>Chart.js</b>. Template halaman menggunakan <b>Jinja2</b>.</p>
+      </div>
+      <div class="card">
+        <h4>Target Pengguna</h4>
+        <p>Administrator jaringan, teknisi ISP, dan pengelola jaringan kecil hingga menengah yang memantau perangkat MikroTik melalui jaringan LAN privat.</p>
+      </div>
+    </div>
+    <div class="tech-stack" style="margin-top:auto;">
+      <span class="tech-item">FastAPI</span>
+      <span class="tech-item">SQLite</span>
+      <span class="tech-item">Chart.js</span>
+      <span class="tech-item">Jinja2</span>
+      <span class="tech-item">Docker</span>
+      <span class="tech-item">RouterOS REST</span>
+      <span class="tech-item">ICMP Ping</span>
+    </div>
+    <div class="slide-footer">
+      <span>Apa Itu NetGuard Monit?</span>
+      <span>Slide 2 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 3: KEGUNAAN ========== -->
+  <div class="slide" id="slide3">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Bagian 2</div>
+        <div class="slide-judul">Kegunaan &amp; Fungsi Utama</div>
+        <div class="slide-sub">NetGuard Monit memantau kesehatan dan performa jaringan LAN secara real-time, memberikan peringatan awal terhadap gangguan, dan menyimpan histori lalu lintas untuk analisis kemudian.</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h4>Trafik Antarmuka</h4>
+        <p>Pantau RX/TX bits per detik pada setiap antarmuka MikroTik (ether, bridge, wlan, sfp) dengan granularitas detik, menit, jam, hari, dan bulan.</p>
+      </div>
+      <div class="card">
+        <h4>Link UP/DOWN</h4>
+        <p>Deteksi status router dan WAN interface. Munculkan alert saat router terputus atau WAN mati, dengan indikator visual hijau/merah di dashboard.</p>
+      </div>
+      <div class="card">
+        <h4>Ping &amp; Latency</h4>
+        <p>Kumpulkan ICMP latency (min/avg/max) dan packet loss per target. Grafik PingPlotter-style dengan zona pengisian antara min dan max latency.</p>
+      </div>
+      <div class="card">
+        <h4>Deteksi DDoS</h4>
+        <p>Analisis baseline lalu lintas untuk mendeteksi lonjakan trafik anomali yang mungkin merupakan serangan DDoS atau broadcast storm.</p>
+      </div>
+      <div class="card">
+        <h4>RouterOS Health</h4>
+        <p>Pantau beban CPU, penyimpanan befas, versi RouterOS, dan nama papan sirkuit (board name) dari sistem router.</p>
+      </div>
+      <div class="card">
+        <h4>Alert &amp; Notifikasi</h4>
+        <p>Sistem peringatan berbasis ambang batas (threshold) dengan cooldown. Dukungan notifikasi Telegram untuk alert critical dan warning.</p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Kegunaan &amp; Fungsi Utama</span>
+      <span>Slide 3 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 4: TAMPILAN ========== -->
+  <div class="slide" id="slide4">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Bagian 3</div>
+        <div class="slide-judul">Tampilan Dashboard</div>
+        <div class="slide-sub">Antarmuka modern dengan tema gelap (dark theme), dirancang untuk kenyamanan pengamatan lama di ruang operasi jaringan (NOC). Semua waktu ditampilkan dalam zona WIB (GMT+0700).</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Header &amp; Status</div>
+        <ul class="features">
+          <li>Live clock dengan format Indonesia (WIB)</li>
+          <li>Status router (terhubung / tidak terhubung)</li>
+          <li>Status WAN interface (aktif / mati)</li>
+          <li>Tombol "Refresh" untuk polling manual</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Kartu Metrik Kesehatan</div>
+        <ul class="features">
+          <li>Beban CPU (persen)</li>
+          <li>Penyimpanan befas / total</li>
+          <li>Status antarmuka (up / down)</li>
+          <li>Versi RouterOS &amp; board name</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:auto;">
+      <div class="card">
+        <h4>Grafik Trafik Antarmuka</div>
+        <p>Chart.js time-series untuk RX dan TX. Selector antarmuka, granularitas, dan rentang waktu. Label X-axis disesuaikan zona waktu WIB (GMT+0700).</p>
+      </div>
+      <div class="card">
+        <h4>Ping &amp; Latency</div>
+        <p>Grafik PingPlotter-style dengan rata-rata, minimum, maksimum latency, dan packet loss pada sumbu Y sekundar. Selector target ping.</p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Tampilan Dashboard</span>
+      <span>Slide 4 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 5: GRAFIK TRAFIK ========== -->
+  <div class="slide" id="slide5">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Fitur Utama</div>
+        <div class="slide-judul">Grafik Trafik Antarmuka</div>
+        <div class="slide-sub">Visualisasi lalu lintas masuk (RX) dan keluar (TX) dalam bits per detik, dengan kontrol penuh atas granularitas dan rentang waktu. Data disimpan per 5 detik untuk resolusi real-time.</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h4>Granularitas Waktu</h4>
+        <ul class="features">
+          <li><b>Detik (real-time)</b> — data setiap 5 detik, cocok untuk pemantauan lonjakan lalu lintas seketik.</li>
+          <li><b>Menit</b> — agregasi per menit untuk analisis harian.</li>
+          <li><b>Jam</b> — agregasi per jam untuk analisis mingguan.</li>
+          <li><b>Hari / Bulan</b> — agregasi untuk histori jangka panjang.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Rentang Waktu</h4>
+        <ul class="features">
+          <li>1 jam</li>
+          <li>6 jam</li>
+          <li>24 jam</li>
+          <li>3 hari</li>
+          <li>1 minggu</li>
+        </ul>
+        <p style="margin-top:10px;">Semua rentang otomatis disesuaikan zona waktu WIB.</p>
+      </div>
+      <div class="card">
+        <h4>Tampilan Label X-Axis</h4>
+        <ul class="features">
+          <li>Format <b>HH:MM:SS</b> (jam:menit:detik)</li>
+          <li>Auto-skip untuk menghindari tumpang tindih label</li>
+          <li>Rotasi 45° untuk keterbacaan</li>
+          <li>Font mengecil otomatis pada granularitas Detik</li>
+          <li>Sinkron dengan waktu live clock &amp; kartu status</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Grafik Trafik Antarmuka</span>
+      <span>Slide 5 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 6: PING & LATENCY ========== -->
+  <div class="slide" id="slide6">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Fitur Utama</div>
+        <div class="slide-judul">Ping &amp; Latency Monitoring</div>
+        <div class="slide-sub">Pantau kualitas koneksi ke target eksternal (mis. 8.8.8.8, 1.1.1.1) dan internal melalui protokol ICMP. Cocok untuk deteksi gangguan konektivitas dan degradasi jaringan.</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Metrik yang Dikumpulkan</h4>
+        <ul class="features">
+          <li>Min latency (ms)</li>
+          <li>Avg latency (ms)</li>
+          <li>Max latency (ms)</li>
+          <li>Packet loss persen (%)</li>
+          <li>Paket terkirim &amp; diterima</li>
+          <li>Waktu observasi (WIB)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Grafik PingPlotter-style</h4>
+        <ul class="features">
+          <li>Lini hijau: rata-rata latency</li>
+          <li>Lini biru putus: minimum latency</li>
+          <li>Lini oranye putus: maksimum latency</li>
+          <li>Lini merah putus: packet loss (sumbu kanan)</li>
+          <li>Zona pengisian (fill) antara min &amp; max latency</li>
+          <li>Selector target ping multi-target</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:auto;">
+      <div class="card">
+        <h4>Alert Ping</h4>
+        <ul class="features">
+          <li>Ambang batas latency (ms)</li>
+          <li>Ambang batas packet loss (%)</li>
+          <li>Alert otomatis saat melebihi threshold</li>
+          <li>Notifikasi Telegram (opsional)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Sinkronisasi Waktu</h4>
+        <p>Semua stempel waktu grafik ping menggunakan zona <b>WIB (GMT+0700)</b> yang sama dengan grafik trafik, live clock, dan kartu status. Tidak ada selisih waktu antar panel.</p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Ping &amp; Latency Monitoring</span>
+      <span>Slide 6 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 7: KEAMANAN ========== -->
+  <div class="slide" id="slide7">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Arsitektur</div>
+        <div class="slide-judul">Keamanan &amp; Deployment</div>
+        <div class="slide-sub">Didesain untuk deployment aman di jaringan privat tanpa mengekspos port ke internet publik. Akses eksternal hanya melalui satu jalur: Cloudflare Tunnel.</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Model Keamanan</h4>
+        <ul class="features">
+          <li>Tidak ada port Docker yang dipublish ke publik</li>
+          <li>Akses eksternal hanya lewat <b>Cloudflare Tunnel</b> (ingress tunggal)</li>
+          <li>RouterOS REST hanya reachable dari jaringan LAN</li>
+          <li>Secrets (password, token) disimpan di <b>.env</b> (tidak di version control)</li>
+          <li>Autentikasi session dengan CSRF protection</li>
+          <li>Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Permissions-Policy</li>
+          <li>Validasi ketat pada semua environment variable saat startup</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Deployment Docker</h4>
+        <ul class="features">
+          <li>Docker + Docker Compose</li>
+          <li><b>cap_add: NET_RAW</b> untuk mengizinkan ICMP ping dari container</li>
+          <li><b>iputils-ping</b> terinstal di dalam container</li>
+          <li>Penyimpanan data SQLite di volume <b>./data</b></li>
+          <li><b>restart: always</b> — container otomatis nyala kembali setelah reboot</li>
+          <li>Build image dengan Python 3.13 slim</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Keamanan &amp; Deployment</span>
+      <span>Slide 7 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 8: RINGKASAN ========== -->
+  <div class="slide" id="slide8">
+    <div class="slide-header">
+      <div>
+        <div class="slide-kode">Ringkasan</div>
+        <div class="slide-judul">Ringkasan Aplikasi</div>
+        <div class="slide-sub">NetGuard Monit adalah solusi monitoring jaringan LAN yang ringan, aman, dan self-hosted untuk MikroTik RouterOS, cocok untuk pengawasan jaringan kecil hingga menengah.</div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h4>Aplikasi</h4>
+        <p>Web-based monitoring dengan <b>FastAPI backend</b>, <b>SQLite database</b> waktu-deret, dan <b>Chart.js frontend</b>. Docker-based untuk deployment mudah dan konsisten di berbagai lingkungan.</p>
+      </div>
+      <div class="card">
+        <h4>Kegunaan</h4>
+        <p>Pantau trafik RX/TX, status link router &amp; WAN, latency &amp; packet loss ping, CPU &amp; disk router, serta deteksi DDoS. Dilengkapi sistem alert berbasis threshold dan notifikasi Telegram.</p>
+      </div>
+      <div class="card">
+        <h4>Tampilan</h4>
+        <p>Dark theme modern, grafik time-series dengan waktu sinkron <b>WIB (GMT+0700)</b>, dashboard interaktif dengan selector granularitas dan rentang waktu, serta status indikator visual real-time.</p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Ringkasan Aplikasi</span>
+      <span>Slide 8 / 9</span>
+    </div>
+  </div>
+
+  <!-- ========== SLIDE 9: PENUTUP ========== -->
+  <div class="slide" id="slide9">
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 85vh;">
+      <div class="slide-kode">Terima Kasih</div>
+      <h1 class="title-main" style="text-align:center;">NetGuard <span>Monit</span></h1>
+      <div class="title-meta" style="text-align:center; max-width:600px;">
+        <p>Monitoring jaringan LAN MikroTik yang ringan, aman, dan real-time.</p>
+        <p style="margin-top:24px; font-size:1rem; color:#a5b6ca;">
+          Docker • FastAPI • SQLite • Chart.js • WIB (GMT+0700) • Cloudflare Tunnel
+        </p>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>NetGuard Monit • Presentasi Sistem</span>
+      <span>Slide 9 / 9</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const totalSlides = 9;
+  const navContainer = document.createElement('div');
+  navContainer.className = 'nav';
+  for (let i = 1; i <= totalSlides; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn' + (i === 1 ? ' active' : '');
+    btn.textContent = i;
+    btn.onclick = function() {
+      // Hide all slides
+      document.querySelectorAll('.slide').forEach(function(s) { s.style.display = 'none'; });
+      // Remove active from all buttons
+      document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+      // Show selected slide
+      document.getElementById('slide' + i).style.display = 'flex';
+      btn.classList.add('active');
+      window.scrollTo(0, 0);
+    };
+    navContainer.appendChild(btn);
+  }
+  document.body.appendChild(navContainer);
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    // Not implemented for simplicity; use mouse nav buttons
+  });
+
+  // Ensure slide 1 is visible by default (others hidden via CSS/JS)
+  // All slides use display:flex by default in HTML, but we hide 2-9 initially
+  for (let i = 2; i <= totalSlides; i++) {
+    var el = document.getElementById('slide' + i);
+    if (el) el.style.display = 'none';
+  }
+  document.getElementById('slide1').style.display = 'flex';
+});
+</script>
+</body>
+</html>

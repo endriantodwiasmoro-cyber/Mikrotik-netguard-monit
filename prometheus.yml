@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s # Ambil data setiap 15 detik
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'snmp-mikrotik'
+    # Target: host Docker (localhost) dan port snmp-exporter (9116)
+    static_configs:
+      - targets: ['localhost:9116']
+    # Pastikan Prometheus tahu di mana mencari metrik SNMP yang diekspos
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+        replacement: '${MIKROTIK_HOST}' # IP MikroTik, configured via environment variable

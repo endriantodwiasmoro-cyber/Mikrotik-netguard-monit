@@ -1,0 +1,1 @@
+"""NetGuard Monit application package."""

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DDoS Detection Dashboard Mockup - NetGuard Monit</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== Design Tokens (from dataviz palette) ===== */
+    :root {
+      /* Surfaces */
+      --surface: #ffffff;
+      --surface-elevated: #f8f9fa;
+      --surface-border: #e9ecef;
+      --surface-dark: #1a1d21;
+      --surface-elevated-dark: #22262c;
+      --surface-border-dark: #3a3f47;
+
+      /* Text */
+      --text-primary: #1a1d21;
+      --text-secondary: #495057;
+      --text-muted: #868e96;
+      --text-primary-dark: #f1f3f5;
+      --text-secondary-dark: #adb5bd;
+      --text-muted-dark: #868e96;
+
+      /* Status Colors (reserved - never for series) */
+      --status-good: #1971c2;
+      --status-good-bg: #e7f5ff;
+      --status-warning: #f08c00;
+      --status-warning-bg: #fff4e6;
+      --status-serious: #e64980;
+      --status-serious-bg: #ffe3ef;
+      --status-critical: #c92a2a;
+      --status-critical-bg: #ffe3e3;
+
+      /* Categorical Series Colors (fixed order, validated) */
+      --series-1: #1971c2;  /* Blue - Volume (bps) */
+      --series-2: #40c057;  /* Green - Packet Rate (pps) */
+      --series-3: #f08c00;  /* Orange - Drops */
+      --series-4: #e64980;  /* Pink - New Connections */
+      --series-5: #7048e8;  /* Purple - SYN Ratio */
+
+      /* Sequential (for heatmaps, single metric intensity) */
+      --seq-1: #e7f5ff; --seq-2: #d0ebff; --seq-3: #a5d8ff; --seq-4: #74c0fc;
+      --seq-5: #4dabf7; --seq-6: #339af0; --seq-7: #228be6; --seq-8: #1c7ed6; --seq-9: #1971c2;
+
+      /* Spacing */
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+      --space-5: 24px; --space-6: 32px; --space-7: 48px;
+
+      /* Radius */
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
+
+      /* Shadows */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+      --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+
+      /* Transitions */
+      --transition: 150ms ease;
+
+      /* Chart specific */
+      --chart-grid: #e9ecef;
+      --chart-grid-dark: #3a3f47;
+      --chart-axis: #868e96;
+      --tooltip-bg: rgba(26,29,33,0.92);
+      --tooltip-bg-dark: rgba(241,243,245,0.92);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface: var(--surface-dark);
+        --surface-elevated: var(--surface-elevated-dark);
+        --surface-border: var(--surface-border-dark);
+        --text-primary: var(--text-primary-dark);
+        --text-secondary: var(--text-secondary-dark);
+        --text-muted: var(--text-muted-dark);
+        --chart-grid: var(--chart-grid-dark);
+        --chart-axis: var(--text-muted-dark);
+        --tooltip-bg: var(--tooltip-bg-dark);
+      }
+    }
+
+    /* ===== Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--surface);
+      min-height: 100vh;
+    }
+
+    /* ===== Layout ===== */
+    .app-header {
+      background: var(--surface-elevated);
+      border-bottom: 1px solid var(--surface-border);
+      padding: var(--space-4) var(--space-6);
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .app-header h1 { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
+    .app-header .eyebrow { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+
+    .controls-bar {
+      display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+      background: var(--surface-elevated);
+      border-bottom: 1px solid var(--surface-border);
+      padding: var(--space-3) var(--space-6);
+    }
+    .control-group { display: flex; align-items: center; gap: var(--space-2); }
+    .control-group label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 500; }
+    .control-group select, .control-group input[type="range"] {
+      background: var(--surface); border: 1px solid var(--surface-border);
+      border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.85rem;
+      color: var(--text-primary); min-width: 140px;
+    }
+    .control-group select:focus { outline: none; border-color: var(--series-1); box-shadow: 0 0 0 2px var(--series-1)33; }
+    .btn { padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 500; border: none; cursor: pointer; transition: var(--transition); }
+    .btn-primary { background: var(--series-1); color: white; }
+    .btn-primary:hover { background: #1864ab; }
+    .btn-danger { background: var(--status-critical); color: white; }
+    .btn-danger:hover { background: #a61e1e; }
+    .btn-secondary { background: var(--surface-elevated); color: var(--text-primary); border: 1px solid var(--surface-border); }
+    .btn-secondary:hover { background: var(--surface-border); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .main-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-5); padding: var(--space-5) var(--space-6); max-width: 1600px; margin: 0 auto; }
+    @media (min-width: 900px) { .main-grid { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 1300px) { .main-grid { grid-template-columns: 1.5fr 1fr; } }
+
+    .panel { background: var(--surface-elevated); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--surface-border); background: var(--surface); }
+    .panel-header h2 { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+    .panel-header .badge { font-size: 0.65rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-normal { background: var(--status-good-bg); color: var(--status-good); }
+    .badge-elevated { background: var(--status-warning-bg); color: var(--status-warning); }
+    .badge-warning { background: var(--status-warning-bg); color: var(--status-warning); }
+    .badge-critical { background: var(--status-critical-bg); color: var(--status-critical); animation: pulse 1.5s infinite; }
+    .badge-recovering { background: var(--status-good-bg); color: var(--status-good); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .panel-body { padding: var(--space-4); }
+
+    .panel-full { grid-column: 1 / -1; }
+
+    /* ===== Gauge Cards ===== */
+    .gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4); }
+    .gauge-card { text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-md); border: 1px solid var(--surface-border); }
+    .gauge-card .iface-name { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: var(--space-2); }
+    .gauge-wrapper { position: relative; width: 120px; height: 120px; margin: 0 auto var(--space-3); }
+    .gauge-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.75rem; font-weight: 700; line-height: 1; }
+    .gauge-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .gauge-thresholds { display: flex; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); font-size: 0.65rem; }
+    .threshold { display: flex; align-items: center; gap: 4px; }
+    .threshold-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ===== Charts ===== */
+    .chart-container { position: relative; height: 320px; }
+    .chart-container-sm { height: 220px; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--surface-border); }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-secondary); }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+
+    /* ===== Metric Table ===== */
+    .metric-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .metric-table th, .metric-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--surface-border); }
+    .metric-table th { font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.65rem; }
+    .metric-table td:first-child { font-weight: 500; color: var(--text-primary); }
+    .metric-table .metric-name { display: flex; align-items: center; gap: var(--space-2); }
+    .metric-table .metric-swatch { width: 10px; height: 10px; border-radius: 2px; }
+    .metric-table .z-score { font-family: monospace; font-weight: 600; }
+    .z-normal { color: var(--status-good); }
+    .z-elevated { color: var(--status-warning); }
+    .z-warning { color: var(--status-warning); }
+    .z-critical { color: var(--status-critical); font-weight: 700; }
+    .metric-table .baseline, .metric-table .threshold { color: var(--text-muted); font-family: monospace; font-size: 0.75rem; }
+    .metric-table .current { font-family: monospace; font-weight: 500; color: var(--text-primary); }
+
+    /* ===== Config Panel ===== */
+    .config-section { margin-bottom: var(--space-5); }
+    .config-section h3 { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--surface-border); }
+    .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3); }
+    @media (max-width: 600px) { .config-row { grid-template-columns: 1fr; } }
+    .config-field label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 4px; }
+    .config-field input, .config-field select { width: 100%; padding: 8px 10px; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); font-size: 0.85rem; }
+    .config-field input:focus, .config-field select:focus { outline: none; border-color: var(--series-1); box-shadow: 0 0 0 2px var(--series-1)33; }
+    .config-field small { display: block; margin-top: 4px; font-size: 0.65rem; color: var(--text-muted); }
+
+    /* ===== Tooltip Custom ===== */
+    .custom-tooltip { background: var(--tooltip-bg); color: var(--text-primary-dark); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); pointer-events: none; font-size: 0.75rem; line-height: 1.6; }
+    .custom-tooltip .tooltip-title { font-weight: 600; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .custom-tooltip .tooltip-row { display: flex; justify-content: space-between; gap: var(--space-3); }
+    .custom-tooltip .tooltip-label { color: var(--text-muted-dark); }
+    .custom-tooltip .tooltip-value { font-family: monospace; font-weight: 500; }
+
+    /* ===== Status Indicator ===== */
+    .status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 500; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.normal { background: var(--status-good); box-shadow: 0 0 0 2px var(--status-good)33; }
+    .status-dot.elevated { background: var(--status-warning); box-shadow: 0 0 0 2px var(--status-warning)33; }
+    .status-dot.warning { background: var(--status-warning); box-shadow: 0 0 0 2px var(--status-warning)33; animation: blink 1s infinite; }
+    .status-dot.critical { background: var(--status-critical); box-shadow: 0 0 0 2px var(--status-critical)33; animation: blink 0.5s infinite; }
+    .status-dot.recovering { background: var(--status-good); box-shadow: 0 0 0 2px var(--status-good)33; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* ===== Mitigation Panel ===== */
+    .mitigation-log { max-height: 300px; overflow-y: auto; }
+    .mitigation-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); background: var(--surface); border-radius: var(--radius-sm); margin-bottom: var(--space-2); border-left: 3px solid var(--surface-border); }
+    .mitigation-item.executed { border-left-color: var(--status-good); }
+    .mitigation-item.rolled_back { border-left-color: var(--status-warning); }
+    .mitigation-item.failed { border-left-color: var(--status-critical); }
+    .mitigation-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+    .mitigation-info { flex: 1; min-width: 0; }
+    .mitigation-action { font-weight: 600; font-size: 0.8rem; margin-bottom: 2px; }
+    .mitigation-meta { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .mitigation-time { font-family: monospace; color: var(--text-secondary); }
+
+    /* ===== Utility ===== */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .text-muted { color: var(--text-muted); }
+    .text-secondary { color: var(--text-secondary); }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">PRIVATE NETWORK MONITOR</p>
+      <h1>DDoS Detection Dashboard</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:var(--space-3);">
+      <span class="status-indicator" id="globalStatus">
+        <span class="status-dot normal" id="globalStatusDot"></span>
+        <span id="globalStatusText">NORMAL</span>
+      </span>
+      <button class="btn btn-secondary" onclick="location.href='/'">← Back to Main</button>
+    </div>
+  </header>
+
+  <!-- ===== Controls Bar ===== -->
+  <div class="controls-bar">
+    <div class="control-group">
+      <label for="interfaceSelect">Interface</label>
+      <select id="interfaceSelect">
+        <option value="ether1-wan">ether1 (WAN)</option>
+        <option value="bridge-lan">bridge-lan (LAN)</option>
+        <option value="ether2-dmz">ether2 (DMZ)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="granularitySelect">Granularity</label>
+      <select id="granularitySelect">
+        <option value="second">Second (real-time)</option>
+        <option value="minute" selected>Minute</option>
+        <option value="hour">Hour</option>
+        <option value="day">Day</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="rangeSelect">Time Range</label>
+      <select id="rangeSelect">
+        <option value="1">1 hour</option>
+        <option value="6" selected>6 hours</option>
+        <option value="24">24 hours</option>
+        <option value="168">7 days</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="profileSelect">Detection Profile</label>
+      <select id="profileSelect">
+        <option value="sensitive">Sensitive (2σ)</option>
+        <option value="balanced" selected>Balanced (3σ)</option>
+        <option value="conservative">Conservative (4σ)</option>
+      </select>
+    </div>
+    <div style="flex:1;"></div>
+    <button class="btn btn-primary" id="mitigationToggle" onclick="toggleMitigation()">Enable Auto-Mitigation</button>
+    <button class="btn btn-danger" id="rollbackBtn" onclick="rollbackMitigation()" disabled>Rollback All</button>
+  </div>
+
+  <!-- ===== Main Grid ===== -->
+  <main class="main-grid">
+    <!-- Panel 1: Anomaly Score Gauges -->
+    <section class="panel" aria-labelledby="gaugeTitle">
+      <header class="panel-header">
+        <h2 id="gaugeTitle">Anomaly Score per Interface</h2>
+        <span class="badge badge-normal" id="overallBadge">NORMAL</span>
+      </header>
+      <div class="panel-body">
+        <div class="gauge-grid" id="gaugeGrid">
+          <!-- Gauges injected by JS -->
+        </div>
+        <p class="text-muted mono" style="margin-top:var(--space-4); font-size:0.75rem; text-align:center;">
+          Scores updated every 5s • Thresholds: Warning ≥3.0 • Critical ≥4.0
+        </p>
+      </div>
+    </section>
+
+    <!-- Panel 2: Config / Mitigation -->
+    <section class="panel" aria-labelledby="configTitle">
+      <header class="panel-header">
+        <h2 id="configTitle">Configuration & Mitigation</h2>
+      </header>
+      <div class="panel-body">
+        <!-- Detection Weights -->
+        <div class="config-section">
+          <h3>Detection Weights (sum = 1.0)</h3>
+          <div class="config-row">
+            <div class="config-field">
+              <label>Volume (bps) — <span id="wBpsVal">0.30</span></label>
+              <input type="range" id="wBps" min="0" max="1" step="0.05" value="0.30" oninput="updateWeight('bps', this.value)">
+              <small>Weight for rx_bps / tx_bps z-score</small>
+            </div>
+            <div class="config-field">
+              <label>Packet Rate (pps) — <span id="wPpsVal">0.25</span></label>
+              <input type="range" id="wPps" min="0" max="1" step="0.05" value="0.25" oninput="updateWeight('pps', this.value)">
+              <small>Weight for rx_pps / tx_pps z-score</small>
+            </div>
+          </div>
+          <div class="config-row">
+            <div class="config-field">
+              <label>Drop Rate — <span id="wDropsVal">0.15</span></label>
+              <input type="range" id="wDrops" min="0" max="1" step="0.05" value="0.15" oninput="updateWeight('drops', this.value)">
+              <small>Weight for rx_drops + tx_drops z-score</small>
+            </div>
+            <div class="config-field">
+              <label>New Conn Rate — <span id="wConnVal">0.20</span></label>
+              <input type="range" id="wConn" min="0" max="1" step="0.05" value="0.20" oninput="updateWeight('newconn', this.value)">
+              <small>Weight for new connections/sec z-score</small>
+            </div>
+          </div>
+          <div class="config-row">
+            <div class="config-field">
+              <label>SYN Ratio — <span id="wSynVal">0.10</span></label>
+              <input type="range" id="wSyn" min="0" max="1" step="0.05" value="0.10" oninput="updateWeight('synratio', this.value)">
+              <small>Weight for tcp-syn-sent / established ratio z-score</small>
+            </div>
+            <div class="config-field">
+              <label>Sum: <span id="weightSum" style="font-weight:700; color:var(--status-good);">1.00</span></label>
+              <input type="text" readonly style="background:transparent; border:none; color:var(--text-muted);">
+            </div>
+          </div>
+        </div>
+
+        <!-- Baseline Settings -->
+        <div class="config-section">
+          <h3>Baseline & Thresholds</h3>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="ewmaAlpha">EWMA Alpha</label>
+              <select id="ewmaAlpha">
+                <option value="0.1">0.1 (slow adapt)</option>
+                <option value="0.2">0.2</option>
+                <option value="0.3" selected>0.3 (default)</option>
+                <option value="0.5">0.5 (fast adapt)</option>
+              </select>
+              <small>Lower = more stable baseline, slower to adapt</small>
+            </div>
+            <div class="config-field">
+              <label for="minStddev">Min StdDev Floor (bps)</label>
+              <input type="number" id="minStddev" value="100000" min="1000" step="10000">
+              <small>Prevents div-by-zero on quiet links</small>
+            </div>
+          </div>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="warmupDays">Warmup Days</label>
+              <input type="number" id="warmupDays" value="7" min="1" max="30">
+              <small>Days before seasonal baselines activate</small>
+            </div>
+            <div class="config-field">
+              <label for="cooldownSec">Mitigation Cooldown (sec)</label>
+              <input type="number" id="cooldownSec" value="300" min="60" max="3600">
+              <small>Min time between mitigation actions</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mitigation Log -->
+        <div class="config-section">
+          <h3>Mitigation Audit Log</h3>
+          <div class="mitigation-log" id="mitigationLog">
+            <div class="mitigation-item executed">
+              <div class="mitigation-icon" style="background:var(--status-good-bg); color:var(--status-good);">✓</div>
+              <div class="mitigation-info">
+                <div class="mitigation-action">Queue Limit Applied (L1)</div>
+                <div class="mitigation-meta">
+                  <span class="mitigation-time">2026-11-09 10:42:15</span>
+                  <span>Interface: ether1 (WAN)</span>
+                  <span>Score: 4.3</span>
+                  <span>Limit: 760 Mbps (80% baseline)</span>
+                </div>
+              </div>
+            </div>
+            <div class="mitigation-item executed">
+              <div class="mitigation-icon" style="background:var(--status-warning-bg); color:var(--status-warning);">⚠</div>
+              <div class="mitigation-info">
+                <div class="mitigation-action">TCP SYN Cookie Enabled (L2)</div>
+                <div class="mitigation-meta">
+                  <span class="mitigation-time">2026-11-09 10:47:15</span>
+                  <span>Interface: ether1 (WAN)</span>
+                  <span>Score: 4.8</span>
+                  <span>5 consecutive CRITICAL polls</span>
+                </div>
+              </div>
+            </div>
+            <div class="mitigation-item rolled_back">
+              <div class="mitigation-icon" style="background:var(--status-good-bg); color:var(--status-good);">↺</div>
+              <div class="mitigation-info">
+                <div class="mitigation-action">Auto-Rollback: Queue Limit Removed</div>
+                <div class="mitigation-meta">
+                  <span class="mitigation-time">2026-11-09 11:12:30</span>
+                  <span>Interface: ether1 (WAN)</span>
+                  <span>State: RECOVERING → NORMAL</span>
+                  <span>3 polls below threshold</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 3: Composite Score Timeline (Full Width) -->
+    <section class="panel panel-full" aria-labelledby="scoreChartTitle">
+      <header class="panel-header">
+        <h2 id="scoreChartTitle">Composite Anomaly Score Timeline</h2>
+        <div style="display:flex; align-items:center; gap:var(--space-3);">
+          <span class="legend-item" style="gap:6px;"><span class="legend-swatch" style="background:var(--series-1);"></span> Composite Score</span>
+          <span class="legend-item" style="gap:6px;"><span class="legend-swatch" style="background:var(--status-warning); opacity:0.3;"></span> Warning Threshold (3.0)</span>
+          <span class="legend-item" style="gap:6px;"><span class="legend-swatch" style="background:var(--status-critical); opacity:0.3;"></span> Critical Threshold (4.0)</span>
+        </div>
+      </header>
+      <div class="panel-body">
+        <div class="chart-container">
+          <canvas id="scoreChart" aria-label="Composite anomaly score over time"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 4: Metric Breakdown Stacked Area (Full Width) -->
+    <section class="panel panel-full" aria-labelledby="breakdownTitle">
+      <header class="panel-header">
+        <h2 id="breakdownTitle">Metric Z-Score Breakdown</h2>
+        <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap;">
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-1);"></span> Volume (bps)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-2);"></span> Packet Rate (pps)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-3);"></span> Drop Rate</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-4);"></span> New Connections</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-5);"></span> SYN Ratio</span>
+        </div>
+      </header>
+      <div class="panel-body">
+        <div class="chart-container-sm">
+          <canvas id="breakdownChart" aria-label="Stacked z-score contributions over time"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 5: Current Metrics vs Baseline Table -->
+    <section class="panel" aria-labelledby="metricsTableTitle">
+      <header class="panel-header">
+        <h2 id="metricsTableTitle">Current Metrics vs Baseline</h2>
+        <select id="tableInterfaceSelect" style="font-size:0.75rem; padding:4px 8px;">
+          <option value="ether1-wan">ether1 (WAN)</option>
+          <option value="bridge-lan">bridge-lan (LAN)</option>
+          <option value="ether2-dmz">ether2 (DMZ)</option>
+        </select>
+      </header>
+      <div class="panel-body" style="overflow-x:auto;">
+        <table class="metric-table" id="metricsTable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="mono">Current</th>
+              <th class="mono">Baseline</th>
+              <th class="mono">StdDev</th>
+              <th class="mono">Threshold</th>
+              <th>Z-Score</th>
+              <th>Contribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 6: Baseline Seasonal View -->
+    <section class="panel" aria-labelledby="baselineTitle">
+      <header class="panel-header">
+        <h2 id="baselineTitle">Seasonal Baseline (Hour of Week)</h2>
+        <select id="baselineMetricSelect" style="font-size:0.75rem; padding:4px 8px;">
+          <option value="rx_bps">rx_bps</option>
+          <option value="rx_pps">rx_pps</option>
+          <option value="drops">drops</option>
+          <option value="new_conn">new_conn</option>
+          <option value="syn_ratio">syn_ratio</option>
+        </select>
+      </header>
+      <div class="panel-body">
+        <div class="chart-container-sm">
+          <canvas id="baselineChart" aria-label="Seasonal baseline by hour of week"></canvas>
+        </div>
+        <p class="text-muted" style="font-size:0.7rem; margin-top:var(--space-2); text-align:center;">
+          168 buckets (Mon 00:00 – Sun 23:00) • Green = current hour
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== JavaScript ===== -->
+  <script>
+    // ===== Mock Data Generation =====
+    function generateMockData() {
+      const now = Date.now();
+      const points = 72; // 6 hours at 5min intervals for demo
+      const labels = [];
+      const compositeScores = [];
+      const metricBreakdown = {
+        bps: [], pps: [], drops: [], newconn: [], synratio: []
+      };
+      const baselines = {
+        rx_bps: 45_000_000, rx_pps: 12_000, drops: 15, new_conn: 180, syn_ratio: 0.12
+      };
+      const stddevs = {
+        rx_bps: 12_000_000, rx_pps: 3_000, drops: 8, new_conn: 50, syn_ratio: 0.03
+      };
+
+      // Simulate attack window at points 30-50
+      for (let i = 0; i < points; i++) {
+        const t = new Date(now - (points - i) * 5 * 60 * 1000);
+        labels.push(t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+
+        let attackFactor = 1;
+        if (i >= 30 && i <= 50) {
+          // Attack ramps up, peaks, then ramps down
+          const progress = (i - 30) / 20;
+          attackFactor = 1 + Math.sin(progress * Math.PI) * 8; // peak 9x
+        }
+
+        // Current values with attack
+        const curBps = baselines.rx_bps * attackFactor + (Math.random() - 0.5) * baselines.rx_bps * 0.1;
+        const curPps = baselines.rx_pps * attackFactor + (Math.random() - 0.5) * baselines.rx_pps * 0.1;
+        const curDrops = baselines.drops * attackFactor + Math.random() * 5;
+        const curConn = baselines.new_conn * attackFactor + Math.random() * 20;
+        const curSyn = Math.min(0.95, baselines.syn_ratio * attackFactor + Math.random() * 0.05);
+
+        // Z-scores
+        const zBps = (curBps - baselines.rx_bps) / stddevs.rx_bps;
+        const zPps = (curPps - baselines.rx_pps) / stddevs.rx_pps;
+        const zDrops = (curDrops - baselines.drops) / stddevs.drops;
+        const zConn = (curConn - baselines.new_conn) / stddevs.new_conn;
+        const zSyn = (curSyn - baselines.syn_ratio) / stddevs.syn_ratio;
+
+        metricBreakdown.bps.push(Math.max(0, zBps));
+        metricBreakdown.pps.push(Math.max(0, zPps));
+        metricBreakdown.drops.push(Math.max(0, zDrops));
+        metricBreakdown.newconn.push(Math.max(0, zConn));
+        metricBreakdown.synratio.push(Math.max(0, zSyn));
+
+        // Composite (weights from design)
+        const w = { bps: 0.30, pps: 0.25, drops: 0.15, newconn: 0.20, synratio: 0.10 };
+        const score = w.bps * Math.max(0, zBps) + w.pps * Math.max(0, zPps) +
+                      w.drops * Math.max(0, zDrops) + w.newconn * Math.max(0, zConn) +
+                      w.synratio * Math.max(0, zSyn);
+        compositeScores.push(score);
+      }
+
+      return { labels, compositeScores, metricBreakdown, baselines, stddevs };
+    }
+
+    const mockData = generateMockData();
+    const weights = { bps: 0.30, pps: 0.25, drops: 0.15, newconn: 0.20, synratio: 0.10 };
+
+    // ===== Color Helpers =====
+    const seriesColors = {
+      bps: '#1971c2', pps: '#40c057', drops: '#f08c00',
+      newconn: '#e64980', synratio: '#7048e8'
+    };
+    const statusColors = {
+      normal: '#1971c2', elevated: '#f08c00', warning: '#f08c00', critical: '#c92a2a', recovering: '#1971c2'
+    };
+
+    function getScoreState(score) {
+      if (score >= 4.0) return 'critical';
+      if (score >= 3.0) return 'warning';
+      if (score >= 2.0) return 'elevated';
+      if (score >= 1.0) return 'recovering';
+      return 'normal';
+    }
+
+    function getZScoreClass(z) {
+      if (z >= 4) return 'z-critical';
+      if (z >= 3) return 'z-warning';
+      if (z >= 2) return 'z-elevated';
+      return 'z-normal';
+    }
+
+    // ===== Gauge Rendering =====
+    function renderGauges() {
+      const container = document.getElementById('gaugeGrid');
+      const interfaces = [
+        { id: 'ether1-wan', name: 'ether1 (WAN)', score: mockData.compositeScores[mockData.compositeScores.length - 1] },
+        { id: 'bridge-lan', name: 'bridge-lan (LAN)', score: mockData.compositeScores[mockData.compositeScores.length - 1] * 0.3 },
+        { id: 'ether2-dmz', name: 'ether2 (DMZ)', score: mockData.compositeScores[mockData.compositeScores.length - 1] * 0.15 }
+      ];
+
+      container.innerHTML = interfaces.map(iface => {
+        const state = getScoreState(iface.score);
+        const badgeClass = `badge-${state}`;
+        const dotClass = `status-dot ${state}`;
+        const circumference = 2 * Math.PI * 50;
+        const offset = circumference * (1 - Math.min(iface.score / 5, 1));
+
+        return `
+          <div class="gauge-card">
+            <div class="iface-name">${iface.name}</div>
+            <div class="gauge-wrapper">
+              <svg width="120" height="120" style="transform: rotate(-90deg);">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--surface-border)" stroke-width="8"/>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="${statusColors[state]}" stroke-width="8"
+                  stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                  stroke-linecap="round" style="transition: stroke-dashoffset 500ms ease;"/>
+              </svg>
+              <div class="gauge-value" style="color:${statusColors[state]}">${iface.score.toFixed(1)}</div>
+            </div>
+            <div class="gauge-label">Composite Score</div>
+            <span class="badge ${badgeClass}">${state.toUpperCase()}</span>
+            <div class="gauge-thresholds">
+              <div class="threshold"><span class="threshold-dot" style="background:var(--status-warning);"></span>Warn ≥3.0</div>
+              <div class="threshold"><span class="threshold-dot" style="background:var(--status-critical);"></span>Crit ≥4.0</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ===== Composite Score Chart =====
+    let scoreChart = null;
+    function renderScoreChart() {
+      const ctx = document.getElementById('scoreChart').getContext('2d');
+      const lastScore = mockData.compositeScores[mockData.compositeScores.length - 1];
+      const state = getScoreState(lastScore);
+
+      // Gradient for area under curve
+      const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+      gradient.addColorStop(0, 'rgba(25,113,194,0.25)');
+      gradient.addColorStop(1, 'rgba(25,113,194,0)');
+
+      if (scoreChart) scoreChart.destroy();
+      scoreChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: mockData.labels,
+          datasets: [
+            {
+              label: 'Composite Score',
+              data: mockData.compositeScores,
+              borderColor: seriesColors.bps,
+              backgroundColor: gradient,
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              tension: 0.3,
+              fill: true,
+              clip: 20
+            },
+            {
+              label: 'Warning Threshold (3.0)',
+              data: mockData.labels.map(() => 3.0),
+              borderColor: 'rgba(240,140,0,0.5)',
+              borderWidth: 1,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              fill: false,
+              clip: 20
+            },
+            {
+              label: 'Critical Threshold (4.0)',
+              data: mockData.labels.map(() => 4.0),
+              borderColor: 'rgba(201,42,42,0.5)',
+              borderWidth: 1,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              fill: false,
+              clip: 20
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(26,29,33,0.92)',
+              titleColor: '#f1f3f5',
+              bodyColor: '#f1f3f5',
+              padding: 12,
+              cornerRadius: 6,
+              displayColors: true,
+              callbacks: {
+                title: (ctx) => `Time: ${ctx[0].label}`,
+                label: (ctx) => {
+                  if (ctx.datasetIndex === 0) {
+                    const score = ctx.parsed.y;
+                    const state = getScoreState(score);
+                    return [`Composite Score: ${score.toFixed(2)}`, `State: ${state.toUpperCase()}`];
+                  }
+                  return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                warningZone: {
+                  type: 'box',
+                  yMin: 3, yMax: 4,
+                  backgroundColor: 'rgba(240,140,0,0.08)',
+                  borderColor: 'rgba(240,140,0,0.2)',
+                  borderWidth: 1,
+                  borderDash: [4, 4]
+                },
+                criticalZone: {
+                  type: 'box',
+                  yMin: 4, yMax: 5,
+                  backgroundColor: 'rgba(201,42,42,0.08)',
+                  borderColor: 'rgba(201,42,42,0.2)',
+                  borderWidth: 1,
+                  borderDash: [4, 4]
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { maxTicksLimit: 12, color: 'var(--chart-axis)', font: { size: 11 } }
+            },
+            y: {
+              min: 0, max: 5,
+              grid: { color: 'var(--chart-grid)', drawBorder: false },
+              ticks: { stepSize: 1, color: 'var(--chart-axis)', font: { size: 11 },
+                callback: (v) => v === 3 ? '3.0 (Warn)' : v === 4 ? '4.0 (Crit)' : v.toFixed(1)
+              },
+              title: { display: true, text: 'Anomaly Score', color: 'var(--text-secondary)', font: { size: 11, weight: '500' } }
+            }
+          },
+          animation: { duration: 300 }
+        }
+      });
+    }
+
+    // ===== Breakdown Stacked Area Chart =====
+    let breakdownChart = null;
+    function renderBreakdownChart() {
+      const ctx = document.getElementById('breakdownChart').getContext('2d');
+
+      const datasets = [
+        { key: 'bps', label: 'Volume (bps)', color: seriesColors.bps },
+        { key: 'pps', label: 'Packet Rate (pps)', color: seriesColors.pps },
+        { key: 'drops', label: 'Drop Rate', color: seriesColors.drops },
+        { key: 'newconn', label: 'New Connections', color: seriesColors.newconn },
+        { key: 'synratio', label: 'SYN Ratio', color: seriesColors.synratio }
+      ].map((d, i) => ({
+        label: d.label,
+        data: mockData.metricBreakdown[d.key],
+        backgroundColor: d.color + '80', // 50% opacity
+        borderColor: d.color,
+        borderWidth: 1.5,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        clip: 20,
+        stack: 'metrics'
+      }));
+
+      if (breakdownChart) breakdownChart.destroy();
+      breakdownChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: mockData.labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(26,29,33,0.92)',
+              titleColor: '#f1f3f5',
+              bodyColor: '#f1f3f5',
+              padding: 12,
+              cornerRadius: 6,
+              callbacks: {
+                title: (ctx) => `Time: ${ctx[0].label}`,
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}σ`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 12, color: 'var(--chart-axis)', font: { size: 10 } } },
+            y: {
+              min: 0, max: 5,
+              stacked: true,
+              grid: { color: 'var(--chart-grid)', drawBorder: false },
+              ticks: { color: 'var(--chart-axis)', font: { size: 10 } },
+              title: { display: true, text: 'Z-Score Contribution', color: 'var(--text-secondary)', font: { size: 10, weight: '500' } }
+            }
+          },
+          animation: { duration: 300 }
+        }
+      });
+    }
+
+    // ===== Metrics Table =====
+    function renderMetricsTable() {
+      const tbody = document.querySelector('#metricsTable tbody');
+      const lastIdx = mockData.compositeScores.length - 1;
+
+      const metrics = [
+        { key: 'bps', label: 'rx_bps', unit: 'bps', weight: weights.bps,
+          current: 950_000_000, baseline: mockData.baselines.rx_bps, stddev: mockData.stddevs.rx_bps },
+        { key: 'pps', label: 'rx_pps', unit: 'pps', weight: weights.pps,
+          current: 85_000, baseline: mockData.baselines.rx_pps, stddev: mockData.stddevs.rx_pps },
+        { key: 'drops', label: 'rx_drops + tx_drops', unit: 'drops/poll', weight: weights.drops,
+          current: 142, baseline: mockData.baselines.drops, stddev: mockData.stddevs.drops },
+        { key: 'newconn', label: 'new_conn_rate', unit: 'conn/s', weight: weights.newconn,
+          current: 2_200, baseline: mockData.baselines.new_conn, stddev: mockData.stddevs.new_conn },
+        { key: 'synratio', label: 'syn_sent / established', unit: 'ratio', weight: weights.synratio,
+          current: 0.85, baseline: mockData.baselines.syn_ratio, stddev: mockData.stddevs.syn_ratio }
+      ];
+
+      tbody.innerHTML = metrics.map(m => {
+        const z = (m.current - m.baseline) / m.stddev;
+        const zClamped = Math.max(0, z);
+        const contribution = (m.weight * zClamped).toFixed(2);
+        const zClass = getZScoreClass(z);
+        const threshold = m.baseline + 3 * m.stddev;
+
+        const fmt = (v, u) => {
+          if (u === 'bps') return (v / 1e6).toFixed(1) + ' Mbps';
+          if (u === 'pps') return v.toLocaleString() + ' pps';
+          if (u === 'ratio') return v.toFixed(2);
+          return v.toLocaleString() + ' ' + u;
+        };
+
+        return `
+          <tr>
+            <td>
+              <div class="metric-name">
+                <span class="metric-swatch" style="background:${seriesColors[m.key]}"></span>
+                <span>${m.label}</span>
+              </div>
+            </td>
+            <td class="current mono">${fmt(m.current, m.unit)}</td>
+            <td class="baseline mono">${fmt(m.baseline, m.unit)}</td>
+            <td class="baseline mono">±${fmt(m.stddev, m.unit)}</td>
+            <td class="baseline mono">${fmt(threshold, m.unit)}</td>
+            <td class="mono ${zClass}">${z >= 0 ? '+' : ''}${z.toFixed(2)}σ</td>
+            <td class="mono" style="color:${seriesColors[m.key]}; font-weight:600;">${contribution}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ===== Seasonal Baseline Chart =====
+    let baselineChart = null;
+    function renderBaselineChart() {
+      const ctx = document.getElementById('baselineChart').getContext('2d');
+      const hours = 168;
+      const labels = [];
+      const baseline = [];
+      const variance = [];
+
+      // Generate seasonal pattern: higher during business hours, lower at night
+      for (let h = 0; h < hours; h++) {
+        const day = Math.floor(h / 24);
+        const hour = h % 24;
+        labels.push(`D${day} H${hour.toString().padStart(2,'0')}`);
+
+        // Base pattern
+        let base = 45_000_000;
+        if (hour >= 9 && hour <= 18) base *= 1.8; // Business hours
+        else if (hour >= 22 || hour <= 6) base *= 0.3; // Night
+        else base *= 1.2; // Morning/evening
+
+        // Weekend dip
+        if (day >= 5) base *= 0.6;
+
+        baseline.push(base);
+        variance.push(base * 0.15);
+      }
+
+      // Current hour marker
+      const now = new Date();
+      const currentHour = now.getDay() * 24 + now.getHours();
+
+      if (baselineChart) baselineChart.destroy();
+      baselineChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Baseline (rx_bps)',
+              data: baseline.map((v, i) => ({
+                x: i, y: v,
+                backgroundColor: i === currentHour ? '#1971c2' : 'rgba(25,113,194,0.4)',
+                borderColor: i === currentHour ? '#1971c2' : 'rgba(25,113,194,0.6)',
+                borderWidth: i === currentHour ? 2 : 1,
+                borderRadius: 2
+              })),
+              borderRadius: 2,
+              barPercentage: 0.9,
+              categoryPercentage: 0.95
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(26,29,33,0.92)',
+              titleColor: '#f1f3f5',
+              bodyColor: '#f1f3f5',
+              callbacks: {
+                title: (ctx) => `Hour of Week: ${ctx[0].label}`,
+                label: (ctx) => `Baseline: ${(ctx.parsed.y / 1e6).toFixed(1)} Mbps`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                maxTicksLimit: 14,
+                color: 'var(--chart-axis)',
+                font: { size: 9 },
+                callback: (v, i) => i % 24 === 0 ? `Day ${Math.floor(i/24)}` : ''
+              }
+            },
+            y: {
+              grid: { color: 'var(--chart-grid)', drawBorder: false },
+              ticks: {
+                color: 'var(--chart-axis)',
+                font: { size: 10 },
+                callback: (v) => (v/1e6).toFixed(0) + 'M'
+              },
+              title: { display: true, text: 'Baseline bps', color: 'var(--text-secondary)', font: { size: 10, weight: '500' } }
+            }
+          },
+          animation: { duration: 300 }
+        }
+      });
+    }
+
+    // ===== Weight Update =====
+    function updateWeight(key, value) {
+      weights[key] = parseFloat(value);
+      const sum = Object.values(weights).reduce((a,b) => a+b, 0);
+
+      document.getElementById(`w${key.charAt(0).toUpperCase() + key.slice(1)}Val`).textContent = parseFloat(value).toFixed(2);
+      document.getElementById('weightSum').textContent = sum.toFixed(2);
+      document.getElementById('weightSum').style.color = Math.abs(sum - 1.0) < 0.01 ? 'var(--status-good)' : 'var(--status-critical)';
+
+      // Re-render charts with new weights
+      renderScoreChart();
+      renderBreakdownChart();
+      renderMetricsTable();
+    }
+
+    // ===== Mitigation Toggle =====
+    let mitigationEnabled = false;
+    function toggleMitigation() {
+      mitigationEnabled = !mitigationEnabled;
+      const btn = document.getElementById('mitigationToggle');
+      const rollbackBtn = document.getElementById('rollbackBtn');
+      if (mitigationEnabled) {
+        btn.textContent = 'Disable Auto-Mitigation';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-danger');
+        rollbackBtn.disabled = false;
+      } else {
+        btn.textContent = 'Enable Auto-Mitigation';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-primary');
+        rollbackBtn.disabled = true;
+      }
+    }
+    function rollbackMitigation() {
+      alert('Manual rollback triggered — all active mitigations will be reverted via RouterOS REST API.');
+    }
+
+    // ===== Interface Select Handler =====
+    document.getElementById('interfaceSelect').addEventListener('change', () => {
+      // In real app, fetch data for selected interface
+      renderGauges();
+      renderScoreChart();
+      renderBreakdownChart();
+      renderMetricsTable();
+    });
+    document.getElementById('tableInterfaceSelect').addEventListener('change', renderMetricsTable);
+    document.getElementById('baselineMetricSelect').addEventListener('change', renderBaselineChart);
+
+    // ===== Init =====
+    function init() {
+      renderGauges();
+      renderScoreChart();
+      renderBreakdownChart();
+      renderMetricsTable();
+      renderBaselineChart();
+
+      // Simulate live updates every 5s
+      setInterval(() => {
+        // Shift data left, add new point
+        mockData.labels.shift();
+        const t = new Date();
+        mockData.labels.push(t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+
+        mockData.compositeScores.shift();
+        const newScore = Math.max(0, mockData.compositeScores[mockData.compositeScores.length-1] + (Math.random()-0.5)*0.5);
+        mockData.compositeScores.push(Math.min(5, newScore));
+
+        Object.keys(mockData.metricBreakdown).forEach(k => {
+          mockData.metricBreakdown[k].shift();
+          mockData.metricBreakdown[k].push(Math.max(0, mockData.metricBreakdown[k][mockData.metricBreakdown[k].length-1] + (Math.random()-0.5)*0.3));
+        });
+
+        renderGauges();
+        scoreChart.data.labels = mockData.labels;
+        scoreChart.data.datasets[0].data = mockData.compositeScores;
+        scoreChart.data.datasets[1].data = mockData.labels.map(() => 3.0);
+        scoreChart.data.datasets[2].data = mockData.labels.map(() => 4.0);
+        scoreChart.update('none');
+
+        breakdownChart.data.labels = mockData.labels;
+        Object.keys(mockData.metricBreakdown).forEach((k, i) => {
+          breakdownChart.data.datasets[i].data = mockData.metricBreakdown[k];
+        });
+        breakdownChart.update('none');
+
+        renderMetricsTable();
+      }, 5000);
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

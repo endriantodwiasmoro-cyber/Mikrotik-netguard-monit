@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+
+{% block title %}DDoS Detection · NetGuard Monit{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* DDoS Dashboard Specific Styles */
+  :root {
+    /* Series Colors (fixed order, validated palette) */
+    --series-bps: #1971c2;       /* Blue - Volume */
+    --series-pps: #40c057;       /* Green - Packet Rate */
+    --series-drops: #f08c00;     /* Orange - Drops */
+    --series-newconn: #e64980;   /* Pink - New Connections */
+    --series-synratio: #7048e8;  /* Purple - SYN Ratio */
+
+    /* Status Colors */
+    --status-good: #1971c2;
+    --status-good-bg: #e7f5ff;
+    --status-warning: #f08c00;
+    --status-warning-bg: #fff4e6;
+    --status-critical: #c92a2a;
+    --status-critical-bg: #ffe3e3;
+
+    /* Chart */
+    --chart-grid: #283a50;
+    --chart-axis: #a5b6ca;
+  }
+
+  /* Layout */
+  .ddos-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .ddos-controls .control-group { display: flex; align-items: center; gap: 8px; }
+  .ddos-controls label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+  .ddos-controls select {
+    background: #07101a; border: 1px solid var(--line); border-radius: 6px; color: var(--text);
+    padding: 8px 12px; font: inherit; min-width: 160px;
+  }
+  .ddos-controls select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ddos-controls .spacer { flex: 1; }
+
+  .btn { padding: 8px 16px; border-radius: 7px; font: inherit; font-weight: 600; border: none; cursor: pointer; transition: filter 150ms; }
+  .btn-primary { background: var(--accent); color: #042018; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { filter: brightness(1.1); }
+  .btn-secondary { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+  .btn-secondary:hover { filter: brightness(1.1); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .ddos-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 900px) { .ddos-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1300px) { .ddos-grid { grid-template-columns: 1.5fr 1fr; } }
+
+  .panel.ddos-panel { margin-top: 0; }
+  .panel-full { grid-column: 1 / -1; }
+
+  /* Gauge Cards */
+  .gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+  .gauge-card { text-align: center; padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .gauge-card .iface-name { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; }
+  .gauge-wrapper { position: relative; width: 130px; height: 130px; margin: 0 auto 12px; }
+  .gauge-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; font-weight: 700; line-height: 1; }
+  .gauge-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .gauge-thresholds { display: flex; justify-content: center; gap: 12px; margin-top: 10px; font-size: .65rem; }
+  .threshold { display: flex; align-items: center; gap: 4px; }
+  .threshold-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Chart Containers */
+  .chart-container { position: relative; height: 320px; }
+  .chart-container-sm { height: 220px; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--muted); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+
+  /* Badge States */
+  .badge-normal { background: var(--status-good-bg); color: var(--status-good); }
+  .badge-elevated { background: var(--status-warning-bg); color: var(--status-warning); }
+  .badge-warning { background: var(--status-warning-bg); color: var(--status-warning); }
+  .badge-critical { background: var(--status-critical-bg); color: var(--status-critical); animation: pulse 1.5s infinite; }
+  .badge-recovering { background: var(--status-good-bg); color: var(--status-good); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  /* Metrics Table */
+  .metric-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .metric-table th, .metric-table td { padding: 10px 14px; text-align: left; border-top: 1px solid var(--line); vertical-align: top; }
+  .metric-table th { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  .metric-table td:first-child { font-weight: 500; color: var(--text); }
+  .metric-table .metric-name { display: flex; align-items: center; gap: 8px; }
+  .metric-table .metric-swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .metric-table .z-score { font-family: monospace; font-weight: 600; }
+  .z-normal { color: var(--accent); }
+  .z-elevated { color: var(--warn); }
+  .z-warning { color: var(--warn); }
+  .z-critical { color: var(--danger); font-weight: 700; }
+  .metric-table .baseline, .metric-table .threshold { color: var(--muted); font-family: monospace; font-size: .8rem; }
+  .metric-table .current { font-family: monospace; font-weight: 500; color: var(--text); }
+  .metric-table .contribution { font-family: monospace; font-weight: 600; }
+
+  /* Config Panel */
+  .config-section { margin-bottom: 20px; }
+  .config-section h3 { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 600px) { .config-row { grid-template-columns: 1fr; } }
+  .config-field label { display: block; font-size: .65rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 4px; }
+  .config-field input, .config-field select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #07101a; color: var(--text); font: inherit; }
+  .config-field input:focus, .config-field select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .config-field small { display: block; margin-top: 4px; font-size: .7rem; color: var(--muted); }
+  .config-field .range-value { font-weight: 700; color: var(--accent); }
+
+  /* Mitigation Log */
+  .mitigation-log { max-height: 300px; overflow-y: auto; }
+  .mitigation-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: #07101a; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--line); }
+  .mitigation-item.executed { border-left-color: var(--accent); }
+  .mitigation-item.rolled_back { border-left-color: var(--warn); }
+  .mitigation-item.failed { border-left-color: var(--danger); }
+  .mitigation-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+  .mitigation-info { flex: 1; min-width: 0; }
+  .mitigation-action { font-weight: 600; font-size: .85rem; margin-bottom: 4px; }
+  .mitigation-meta { font-size: .7rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .mitigation-time { font-family: monospace; color: var(--text); }
+
+  /* Status Indicator */
+  .status-indicator { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 600; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .status-dot.normal { background: var(--status-good); box-shadow: 0 0 0 2px var(--status-good)33; }
+  .status-dot.elevated { background: var(--status-warning); box-shadow: 0 0 0 2px var(--status-warning)33; }
+  .status-dot.warning { background: var(--status-warning); box-shadow: 0 0 0 2px var(--status-warning)33; animation: blink 1s infinite; }
+  .status-dot.critical { background: var(--status-critical); box-shadow: 0 0 0 2px var(--status-critical)33; animation: blink 0.5s infinite; }
+  .status-dot.recovering { background: var(--status-good); box-shadow: 0 0 0 2px var(--status-good)33; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Weight sum indicator */
+  .weight-sum.ok { color: var(--accent); }
+  .weight-sum.warn { color: var(--danger); }
+
+  /* Table scroll */
+  .table-scroll { overflow-x: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Global Status + Controls -->
+<div style="max-width:1120px;margin:auto;padding:0 24px 24px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span class="status-indicator" id="globalStatus">
+        <span class="status-dot normal" id="globalStatusDot"></span>
+        <span id="globalStatusText">NORMAL</span>
+      </span>
+      <span class="badge badge-normal" id="overallBadge">NORMAL</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="location.href='/'">← Traffic Dashboard</button>
+    </div>
+  </div>
+
+  <!-- Controls Bar -->
+  <div class="ddos-controls">
+    <div class="control-group">
+      <label for="interfaceSelect">Interface</label>
+      <select id="interfaceSelect">
+        {% for iface in interfaces %}
+          <option value="{{ iface.name }}">{{ iface.name }}</option>
+        {% else %}
+          <option>Belum ada data antarmuka</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="granularitySelect">Granularitas</label>
+      <select id="granularitySelect">
+        <option value="second">Detik (real-time)</option>
+        <option value="minute" selected>Menit</option>
+        <option value="hour">Jam</option>
+        <option value="day">Hari</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="rangeSelect">Rentang</label>
+      <select id="rangeSelect">
+        <option value="1">1 jam</option>
+        <option value="6" selected>6 jam</option>
+        <option value="24">24 jam</option>
+        <option value="168">7 hari</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="profileSelect">Profil Deteksi</label>
+      <select id="profileSelect">
+        <option value="sensitive" {% if profile == 'sensitive' %}selected{% endif %}>Sensitif (2σ)</option>
+        <option value="balanced" {% if profile == 'balanced' %}selected{% endif %}>Seimbang (3σ)</option>
+        <option value="conservative" {% if profile == 'conservative' %}selected{% endif %}>Konservatif (4σ)</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="mitigationToggle" onclick="toggleMitigation()">
+      {% if automitigate %}Nonaktifkan Auto-Mitigasi{% else %}Aktifkan Auto-Mitigasi{% endif %}
+    </button>
+    <button class="btn btn-danger" id="rollbackBtn" onclick="rollbackMitigation()" {% if not automitigate %}disabled{% endif %}>Rollback Semua</button>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="ddos-grid">
+    <!-- Panel 1: Anomaly Score Gauges -->
+    <section class="panel ddos-panel" aria-labelledby="gaugeTitle">
+      <header class="panel-header">
+        <h2 id="gaugeTitle">Skor Anomali per Antarmuka</h2>
+        <span class="badge badge-normal" id="overallBadge2">NORMAL</span>
+      </header>
+      <div class="panel-body">
+        <div class="gauge-grid" id="gaugeGrid">
+          <!-- Gauges injected by JS -->
+        </div>
+        <p style="margin-top:16px; font-size:.75rem; color:var(--muted); text-align:center;">
+          Skor diperbarui tiap 5 detik • Threshold: Warning ≥3.0 • Critical ≥4.0
+        </p>
+      </div>
+    </section>
+
+    <!-- Panel 2: Config & Mitigation -->
+    <section class="panel ddos-panel" aria-labelledby="configTitle">
+      <header class="panel-header">
+        <h2 id="configTitle">Konfigurasi & Mitigasi</h2>
+      </header>
+      <div class="panel-body">
+        <!-- Detection Weights -->
+        <div class="config-section">
+          <h3>Bobot Deteksi (total = 1.0)</h3>
+          <div class="config-row">
+            <div class="config-field">
+              <label>Volume (bps) — <span id="wBpsVal" class="range-value">0.30</span></label>
+              <input type="range" id="wBps" min="0" max="1" step="0.05" value="0.30" oninput="updateWeight('bps', this.value)">
+              <small>Bobot untuk z-score rx_bps / tx_bps</small>
+            </div>
+            <div class="config-field">
+              <label>Packet Rate (pps) — <span id="wPpsVal" class="range-value">0.25</span></label>
+              <input type="range" id="wPps" min="0" max="1" step="0.05" value="0.25" oninput="updateWeight('pps', this.value)">
+              <small>Bobot untuk z-score rx_pps / tx_pps</small>
+            </div>
+          </div>
+          <div class="config-row">
+            <div class="config-field">
+              <label>Drop Rate — <span id="wDropsVal" class="range-value">0.15</span></label>
+              <input type="range" id="wDrops" min="0" max="1" step="0.05" value="0.15" oninput="updateWeight('drops', this.value)">
+              <small>Bobot untuk z-score rx_drops + tx_drops</small>
+            </div>
+            <div class="config-field">
+              <label>New Conn Rate — <span id="wConnVal" class="range-value">0.20</span></label>
+              <input type="range" id="wConn" min="0" max="1" step="0.05" value="0.20" oninput="updateWeight('newconn', this.value)">
+              <small>Bobot untuk z-score new connections/sec</small>
+            </div>
+          </div>
+          <div class="config-row">
+            <div class="config-field">
+              <label>SYN Ratio — <span id="wSynVal" class="range-value">0.10</span></label>
+              <input type="range" id="wSyn" min="0" max="1" step="0.05" value="0.10" oninput="updateWeight('synratio', this.value)">
+              <small>Bobot untuk z-score tcp-syn-sent / established ratio</small>
+            </div>
+            <div class="config-field">
+              <label>Total: <span id="weightSum" class="weight-sum ok">1.00</span></label>
+              <input type="text" readonly style="background:transparent; border:none; color:var(--muted);">
+            </div>
+          </div>
+        </div>
+
+        <!-- Baseline Settings -->
+        <div class="config-section">
+          <h3>Baseline & Threshold</h3>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="ewmaAlpha">EWMA Alpha</label>
+              <select id="ewmaAlpha">
+                <option value="0.1">0.1 (adaptasi lambat)</option>
+                <option value="0.2">0.2</option>
+                <option value="0.3" selected>0.3 (default)</option>
+                <option value="0.5">0.5 (adaptasi cepat)</option>
+              </select>
+              <small>Lebih rendah = baseline lebih stabil, lebih lambat adapt</small>
+            </div>
+            <div class="config-field">
+              <label for="minStddev">Min StdDev Floor (bps)</label>
+              <input type="number" id="minStddev" value="100000" min="1000" step="10000">
+              <small>Mencegah div-by-zero pada link sepi</small>
+            </div>
+          </div>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="warmupDays">Warmup Days</label>
+              <input type="number" id="warmupDays" value="7" min="1" max="30">
+              <small>Hari sebelum baseline musiman aktif</small>
+            </div>
+            <div class="config-field">
+              <label for="cooldownSec">Cooldown Mitigasi (detik)</label>
+              <input type="number" id="cooldownSec" value="300" min="60" max="3600">
+              <small>Min waktu antar aksi mitigasi</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mitigation Log -->
+        <div class="config-section">
+          <h3>Log Mitigasi (Audit)</h3>
+          <div class="mitigation-log" id="mitigationLog">
+            <p style="color:var(--muted); padding:12px; text-align:center;">Memuat log mitigasi...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 3: Composite Score Timeline (Full Width) -->
+    <section class="panel ddos-panel panel-full" aria-labelledby="scoreChartTitle">
+      <header class="panel-header">
+        <h2 id="scoreChartTitle">Timeline Skor Anomali Komposit</h2>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-bps);"></span> Skor Komposit</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--status-warning); opacity:0.3;"></span> Warning (3.0)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--status-critical); opacity:0.3;"></span> Critical (4.0)</span>
+        </div>
+      </header>
+      <div class="panel-body">
+        <div class="chart-container">
+          <canvas id="scoreChart" aria-label="Skor anomali komposit over time"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 4: Metric Breakdown Stacked Area (Full Width) -->
+    <section class="panel ddos-panel panel-full" aria-labelledby="breakdownTitle">
+      <header class="panel-header">
+        <h2 id="breakdownTitle">Breakdown Z-Score per Metrik</h2>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-bps);"></span> Volume (bps)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-pps);"></span> Packet Rate (pps)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-drops);"></span> Drop Rate</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-newconn);"></span> New Connections</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--series-synratio);"></span> SYN Ratio</span>
+        </div>
+      </header>
+      <div class="panel-body">
+        <div class="chart-container-sm">
+          <canvas id="breakdownChart" aria-label="Stacked z-score contributions over time"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 5: Current Metrics vs Baseline Table -->
+    <section class="panel ddos-panel" aria-labelledby="metricsTableTitle">
+      <header class="panel-header">
+        <h2 id="metricsTableTitle">Metrik Saat Ini vs Baseline</h2>
+        <select id="tableInterfaceSelect" style="font-size:.75rem; padding:6px 10px; background:#07101a; border:1px solid var(--line); border-radius:6px; color:var(--text);">
+          {% for iface in interfaces %}
+            <option value="{{ iface.name }}">{{ iface.name }}</option>
+          {% endfor %}
+        </select>
+      </header>
+      <div class="panel-body table-scroll">
+        <table class="metric-table" id="metricsTable">
+          <thead>
+            <tr>
+              <th>Metrik</th>
+              <th class="mono">Current</th>
+              <th class="mono">Baseline</th>
+              <th class="mono">StdDev</th>
+              <th class="mono">Threshold (3σ)</th>
+              <th>Z-Score</th>
+              <th>Kontribusi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 6: Baseline Seasonal View -->
+    <section class="panel ddos-panel" aria-labelledby="baselineTitle">
+      <header class="panel-header">
+        <h2 id="baselineTitle">Baseline Musiman (Hour of Week)</h2>
+        <select id="baselineMetricSelect" style="font-size:.75rem; padding:6px 10px; background:#07101a; border:1px solid var(--line); border-radius:6px; color:var(--text);">
+          <option value="rx_bps">rx_bps</option>
+          <option value="rx_pps">rx_pps</option>
+          <option value="drops">drops</option>
+          <option value="new_conn">new_conn</option>
+          <option value="syn_ratio">syn_ratio</option>
+        </select>
+      </header>
+      <div class="panel-body">
+        <div class="chart-container-sm">
+          <canvas id="baselineChart" aria-label="Seasonal baseline by hour of week"></canvas>
+        </div>
+        <p style="font-size:.7rem; color:var(--muted); margin-top:8px; text-align:center;">
+          168 bucket (Sen 00:00 – Min 23:00) • Biru solid = jam saat ini
+        </p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/ddos.js"></script>
+{% endblock %}

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  netguard-monit:
+    build: .
+    container_name: netguard-monit
+    restart: always
+    # Diakses lewat http://localhost:8000 untuk testing
+    # Untuk produksi dengan Cloudflare, hapus port ini dan gunakan tunnel
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    cap_add:
+      - NET_RAW
+    networks:
+      - local_network
+
+networks:
+  local_network:
+    driver: bridge

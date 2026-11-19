@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": true,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "linter": "default",
+        "message": "NetGuardMonit Dashboard - Monitoring Jaringan Lokal MikroTik",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "title": "Status Jaringan MikroTik (Up/Down)",
+      "type": "text"
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "title": "Trafik Interface (Byte In)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(mikrotik_ifInOctets{ip=\"192.168.10.1\"}[5m])",
+          "legendFormat": "IF In: {{instance}}"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "title": "Trafik Interface (Byte Out)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(mikrotik_ifOutOctets{ip=\"192.168.10.1\"}[5m])",
+          "legendFormat": "IF Out: {{instance}}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["netguard", "mikrotik"],
+  "timezone": "browser",
+  "title": "NetGuardMonit - Monitoring Jaringan Lokal",
+  "uid": "netguard-mikrotik-dashboard"
+}

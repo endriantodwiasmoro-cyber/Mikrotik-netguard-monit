@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc~
+*.pyo~
+
+# Environment variables (NEVER commit this!)
+.env
+*.env.local
+
+# Data directory - contains SQLite database and certificates
+data/
+data/netguard.db
+data/netguard.db-shm
+data/netguard.db-wal
+data/certs/
+
+# Cloudflare tunnel credentials
+tunnel_token_here
+
+# Docker
+.dockerignore
+docker/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prometheus data
+prometheus/*.json
+
+# Images for readme (keep in repo if used for readme, or remove)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg

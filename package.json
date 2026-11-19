@@ -1,0 +1,15 @@
+{
+  "name": "netguardmonit",
+  "version": "1.0.0",
+  "description": "Monitoring LAN seperti PRTG untuk MikroTik hAP ac (RouterOS 7.25.1) dengan dashboard browser dan notifikasi Telegram. Tidak pernah mengekspos RouterOS ke internet: pengambil data memanggil REST RouterOS private HTTPS dari server, sementara dashboard diakses melalui Cloudflare Tunnel over HTTPS.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.65.0"
+  }
+}
