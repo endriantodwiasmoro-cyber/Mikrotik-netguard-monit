@@ -6,8 +6,55 @@ Monitoring LAN seperti PRTG untuk MikroTik hAP ac (RouterOS 7.25.1) dengan dashb
 
 - **Trafik antarmuka realtime** — RX/TX bits per detik per antarmuka, dengan granularitas detik, menit, jam, hari, dan bulan
 - **Status link UP/DOWN** — deteksi router tidak terhubung dan antarmuka WAN mati, dengan alert otomatis dan pesan pemulihan (recovery)
-- **Alert DDoS** — lalu lintas tinggi melebihi ambang batas (default 100 Mbps) pada antarmuka WAN
-- **Alert Broadcast / storm** — jumlah packet drop tinggi yang mengindikasikan kemungkinan siaran berlebih
+# 🛡️ NetGuardMonit: Secure MikroTik Monitoring Proxy
+[![License](https://img.shields.io/badge/License-BSD%2D3--Clause-blue.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Working%20in%20Progress-orange.svg)](README.md#status)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Docker-blue.svg)](https://docs.docker.com/get-docker/)
+
+**NetGuardMonit** adalah solusi monitoring jaringan (mirip PRTG) yang dirancang khusus untuk MikroTik RouterOS di lingkungan LAN lokal. Fokus utama proyek ini adalah **keamanan absolut**: semua akses REST RouterOS hanya diizinkan dari host lokal, dan *dashboard* publik diakses melalui **Cloudflare Tunnel**, **bukan** melalui port yang di-*port-forward* dari router.
+
+## 🖼️ Tampilan Dashboard
+![Main Dashboard Screenshot](ddos_dashboard_mockup.png)
+
+## ✨ Fitur Utama
+*   **Monitoring Komprehensif:** Traffic RX/TX *realtime* per antarmuka, status link UP/DOWN, kesehatan sistem (CPU, Disk, Uptime).
+*   **Keamanan Terdepan:** Akses RouterOS **LAN-only**. Dashboard dilindungi dengan **Password Admin Wajib** (Argon2id), sesi *server-side* *opaque*, CSRF, dan *secure HTTPOnly cookie*.
+*   **Akses Aman:** Tidak ada *port* yang dipublikasikan. Menggunakan **Cloudflare Tunnel** untuk *ingress* HTTPS aman.
+*   **Notifikasi:** Integrasi Telegram untuk alert kritis dan pesan pemulihan.
+
+## 🔒 Model Keamanan & Arsitektur
+1.  **Akses Terbatas:** RouterOS REST hanya dapat diakses dari host Docker di dalam LAN.
+2.  **Tidak Ada Port Publik:** Pengaturan *firewall* RouterOS memastikan port manajemen (Winbox, API, SSH, WebFig) **tidak pernah** di-*port-forward*.
+3.  **Persistensi Aman:** Data SQLite (`data/netguard.db`) dan konfigurasi disimpan secara persisten di drive `R:` host Windows.
+4.  **Validasi Ketat:** Pengaturan lingkungan (misalnya, `MIKROTIK_TLS_VERIFY`) wajib dipatuhi untuk mencegah koneksi tidak aman.
+
+## ⚙️ Instalasi & Deployment (Panduan Pemula)
+(Menggunakan PowerShell di `R:\NetGuardMonit`)
+
+```powershell
+# 1. Salin template dan edit file .env
+Copy-Item .env.example .env
+notepad .env # Isi APP_ADMIN_PASSWORD, MIKROTIK_PASSWORD, dan hostname Cloudflare
+
+# 2. Build dan jalankan container
+docker compose up -d --build
+
+# 3. Akses dashboard melalui hostname Cloudflare Anda.
+```
+
+## 🔗 Dokumentasi Teknis
+*   [Konfigurasi RouterOS](docs/router-config.md)
+*   [Panduan Cloudflare Tunnel](docs/cloudflare-setup.md)
+
+## 📦 Teknologi
+*   Python 3.13 (Uvicorn)
+*   Docker & Docker Compose
+*   MikroTik RouterOS
+*   Cloudflare Zero Trust Tunnel
+*   SQLite (Time-series data)
+*   Telegram API
+
+**Status Proyek:** 🚧 *Working in Progress* (Fokus pada penyempurnaan deteksi DDoS dan pemulihan notifikasi.)
 - **Kesehatan sistem RouterOS** — beban CPU, ruang disk, versi, board, uptime
 - **Notifikasi Telegram** — alert saat masalah naik, pengingat selama cooldown, dan pemulihan saat kondisi membaik
 - **Dashboard aman** — kata sandi admin wajib, verifikasi Argon2id, sesi sisi server, CSRF, secure HttpOnly cookie, rate limiting login, header keamanan ketat
